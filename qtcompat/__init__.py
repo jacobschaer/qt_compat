@@ -71,6 +71,7 @@ if _QT_MODULE.__name__ == 'PyQt4':
     from PyQt4 import QtGui as Gui
     from PyQt4 import QtCore as Core
     from PyQt4 import Qt, uic
+    from PyQt4 import QtTest as Test
 
     Widgets = ModuleType('Widgets')
     for widget in _WIDGETS:
@@ -112,3 +113,4 @@ sys.modules[__name__ + '.Widgets'] = Widgets
 sys.modules[__name__ + '.Core'] = Core
 sys.modules[__name__ + '.Gui'] = Gui
 sys.modules[__name__ + '.Qt'] = Qt
+sys.modules[__name__ + '.Test'] = Test
