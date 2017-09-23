@@ -63,37 +63,70 @@ for backend in _SUPPORTED_BACKEND:
 if _QT_MODULE is None:
     raise ImportError("No compatible Qt library found. Need one of: " + ", ".join(_SUPPORTED_BACKEND))
 
+common_modules = dict()
+
 if _QT_MODULE.__name__ == 'PyQt4':
     import sip
     sip.setapi('QString', 2)
     sip.setapi('QVariant', 2)
 
-    from PyQt4 import QtGui as Gui
-    from PyQt4 import QtCore as Core
-    from PyQt4 import Qt, uic
-    from PyQt4 import QtTest as Test
+    imports = {'QtGui' : 'Gui',
+               'QtCore' : 'Core',
+               'Qt' : 'Qt',
+               'uic' : 'uic',
+               'QtTest': 'Test'}
 
-    Widgets = ModuleType('Widgets')
-    for widget in _WIDGETS:
-        setattr(Widgets, widget, getattr(Gui, widget))
+    for key, value in imports.items():
+        try:
+            common_modules[value] = import_module(key, package=_QT_MODULE.__name__)
+        except ImportError:
+            print("Skipping {name} because it wasn't found.".format(name='.'.join([_QT_MODULE.__name__ + key])))
+            pass
 
-    Signal = Core.pyqtSignal
-    Slot = Core.pyqtSlot
-    Property = Core.pyqtProperty
+    if 'Gui' in common_modules:
+        Widgets = ModuleType('Widgets')
+        for widget in _WIDGETS:
+            setattr(Widgets, widget, getattr(common_modules['Gui'], widget))
+
+    if 'Core' in common_modules:
+        Signal = common_modules['Core'].pyqtSignal
+        Slot = common_modules['Core'].pyqtSlot
+        Property = common_modules['Core'].pyqtProperty
 
 elif _QT_MODULE.__name__ == 'PyQt5':
-    from PyQt5 import QtCore as Core
-    from PyQt5 import QtGui as Gui
-    from PyQt5 import QtWidgets
-    from PyQt5 import Qt, uic
+    imports = {'QtGui' : 'Gui',
+               'QtCore' : 'Core',
+               'QtWidgets' : 'QtWidgets',
+               'Qt' : 'Qt',
+               'uic' : 'uic',
+               'QtTest': 'Test'}
 
-    Widgets = ModuleType('Widgets')
-    for widget in _WIDGETS:
-        setattr(Widgets, widget, getattr(QtWidgets, widget))
+    for key, value in imports.items():
+        try:
+            common_modules[value] = import_module(key, package=_QT_MODULE.__name__)
+        except ImportError:
+            print("Skipping {name} because it wasn't found.".format(name='.'.join([_QT_MODULE.__name__ + key])))
+            pass
 
-    Signal = Core.Signal
-    Slot = Core.Slot
-    Property = Core.Property
+    if 'Gui' in common_modules and 'Core' in common_modules:
+        setattr(common_modules['Gui'], 'QSortFilterProxyModel', common_modules['Core'].QSortFilterProxyModel)
+
+    if 'QtWidgets':
+        Widgets = ModuleType('Widgets')
+        for widget in _WIDGETS:
+            setattr(Widgets, widget, getattr(QtWidgets, widget))
+
+        class LegacyFileDialog(QtWidgets.QFileDialog):
+            def getOpenFileNames(self, *args, **kwargs):
+                file_list, _ = super(LegacyFileDialog, self).getOpenFileNames(*args, **kwargs)
+                return file_list
+
+        setattr(Widgets, "QFileDialog", LegacyFileDialog)
+
+    if 'Core' in common_modules:
+        Signal = common_modules['Core'].pyqtSignal
+        Slot = common_modules['Core'].pyqtSlot
+        Property = common_modules['Core'].pyqtProperty
 
 elif _QT_MODULE.__name__ == 'PySide':
     from _QT_MODULE.__name__ import QtGui as Gui
@@ -109,8 +142,6 @@ elif _QT_MODULE.__name__ == 'PySide':
     Property = Core.Property
 
 # Dark Magic to make fake modules for importing from
-sys.modules[__name__ + '.Widgets'] = Widgets
-sys.modules[__name__ + '.Core'] = Core
-sys.modules[__name__ + '.Gui'] = Gui
-sys.modules[__name__ + '.Qt'] = Qt
-sys.modules[__name__ + '.Test'] = Test
+for name in ['Widgets', 'Core', 'Gui', 'Qt', 'Test', 'Slot', 'Signal', 'Property']:
+    if name in common_modules:
+        sys.modules[__name__ + name] = common_modules[name]
