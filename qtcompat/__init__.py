@@ -77,16 +77,18 @@ if _QT_MODULE.__name__ == 'PyQt4':
                'QtTest': 'Test'}
 
     for key, value in imports.items():
+        mod_name = '.'.join([_QT_MODULE.__name__, key])
         try:
-            common_modules[value] = import_module(key, package=_QT_MODULE.__name__)
+            common_modules[value] = import_module(mod_name)
         except ImportError:
-            print("Skipping {name} because it wasn't found.".format(name='.'.join([_QT_MODULE.__name__ + key])))
+            print("Skipping {name} because it wasn't found.".format(name=mod_name))
             pass
 
     if 'Gui' in common_modules:
         Widgets = ModuleType('Widgets')
         for widget in _WIDGETS:
             setattr(Widgets, widget, getattr(common_modules['Gui'], widget))
+        common_modules['Widgets'] = Widgets
 
     if 'Core' in common_modules:
         Signal = common_modules['Core'].pyqtSignal
@@ -102,10 +104,11 @@ elif _QT_MODULE.__name__ == 'PyQt5':
                'QtTest': 'Test'}
 
     for key, value in imports.items():
+        mod_name = '.'.join([_QT_MODULE.__name__, key])
         try:
-            common_modules[value] = import_module(key, package=_QT_MODULE.__name__)
+            common_modules[value] = import_module(mod_name)
         except ImportError:
-            print("Skipping {name} because it wasn't found.".format(name='.'.join([_QT_MODULE.__name__ + key])))
+            print("Skipping {name} because it wasn't found.".format(name=mod_name))
             pass
 
     if 'Gui' in common_modules and 'Core' in common_modules:
@@ -122,6 +125,7 @@ elif _QT_MODULE.__name__ == 'PyQt5':
                 return file_list
 
         setattr(Widgets, "QFileDialog", LegacyFileDialog)
+        common_modules['Widgets'] = Widgets
 
     if 'Core' in common_modules:
         Signal = common_modules['Core'].pyqtSignal
@@ -142,6 +146,6 @@ elif _QT_MODULE.__name__ == 'PySide':
     Property = Core.Property
 
 # Dark Magic to make fake modules for importing from
-for name in ['Widgets', 'Core', 'Gui', 'Qt', 'Test', 'Slot', 'Signal', 'Property']:
+for name in ['Widgets', 'Core', 'Gui', 'Qt', 'Test', 'Slot', 'Signal', 'Property', 'uic']:
     if name in common_modules:
-        sys.modules[__name__ + name] = common_modules[name]
+        sys.modules['.'.join([__name__, name])] = common_modules[name]
